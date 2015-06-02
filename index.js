@@ -1,0 +1,45 @@
+var geojsonStream = require('geojson-stream'),
+    through = require('through'),
+    fs = require('fs'),
+    readDbf = require('read-dbf'),
+    indexBy = require('101/index-by'),
+    parseCsv = require('neat-csv'),
+    assign = require('101/assign'),
+    argv = require('minimist')(process.argv.slice(2));
+
+if (!argv._.length || !argv.againstField || !argv.geojsonField) {
+    throw new Error('\n\nusage: geojson-join against.json --againstField=VAL \\\n\t--geojsonField=VAL < featurecollection.geojson > output.geojson\n');
+}
+
+var format = argv.f || argv.format || 'json';
+
+var parser = {
+    json: function json(f, cb) {
+        fs.readFile(f, 'utf8', function(err, data) {
+            if (err) throw err;
+            cb(null, JSON.parse(data));
+        });
+    },
+    csv: function csv(f, cb) {
+        fs.readFile(f, 'utf8', function(err, str) {
+            if (err) throw err;
+            parseCsv(str, function(err2, data) {
+                if (err2) throw err2;
+                cb(null, data);
+            });
+        });
+    },
+    dbf: readDbf
+}[format];
+
+parser(argv._[0], function(err, againstData) {
+    if (err) throw err;
+    var against = indexBy(againstData, argv.againstField);
+    process.stdin.pipe(geojsonStream.parse())
+        .pipe(through(function(feature) {
+            assign(feature.properties, against[feature.properties[argv.geojsonField]] || {});
+            this.push(feature);
+        }))
+        .pipe(geojsonStream.stringify())
+        .pipe(process.stdout);
+});
