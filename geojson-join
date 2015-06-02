@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 var geojsonStream = require('geojson-stream'),
     through = require('through'),
     fs = require('fs'),

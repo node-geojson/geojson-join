@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "join a geojson stream against a dataset",
   "main": "index.js",
+  "bin": {
+    "geojson-join": "geojson-join"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
