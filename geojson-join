@@ -39,7 +39,13 @@ parser(argv._[0], function(err, againstData) {
     var against = indexBy(againstData, argv.againstField);
     process.stdin.pipe(geojsonStream.parse())
         .pipe(through(function(feature) {
-            assign(feature.properties, against[feature.properties[argv.geojsonField]] || {});
+            var geojsonVal = feature.properties[argv.geojsonField];
+            var match = against[geojsonVal];
+            if (match) {
+                assign(feature.properties, match);
+            } else {
+                console.error('found no match for geojsonField=%s', geojsonVal);
+            }
             this.push(feature);
         }))
         .pipe(geojsonStream.stringify())
