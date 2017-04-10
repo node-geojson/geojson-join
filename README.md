@@ -1,5 +1,7 @@
 # geojson-join
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/tmcw/geojson-join.svg)](https://greenkeeper.io/)
+
 Join a stream of GeoJSON against a dataset.
 
 ## install
