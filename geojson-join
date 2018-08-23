@@ -4,13 +4,14 @@ var geojsonStream = require('geojson-stream'),
     through = require('through'),
     fs = require('fs'),
     readDbf = require('read-dbf'),
-    indexBy = require('101/index-by'),
     parseCsv = require('neat-csv'),
     assign = require('101/assign'),
+    keysIn = require('101/keys-in'),
+    collection = require('d3-collection'),
     argv = require('minimist')(process.argv.slice(2));
 
 if (!argv._.length || !argv.againstField || !argv.geojsonField) {
-    throw new Error('\n\nusage: geojson-join against.json --againstField=VAL \\\n\t--geojsonField=VAL < featurecollection.geojson > output.geojson\n');
+    throw new Error('\n\nusage: geojson-join against.json \\\n\t[--format=FORMAT] \\\n\t[--type=KEY:TYPE] \\\n\t--againstField=VAL \\\n\t--geojsonField=VAL < featurecollection.geojson > output.geojson\n');
 }
 
 var format = argv.f || argv.format || 'json';
@@ -34,17 +35,60 @@ var parser = {
     dbf: readDbf
 }[format];
 
+var argList = function(arg) {
+    return typeof arg === 'string'
+        ? [arg]
+        : (arg || []);
+};
+
+var setType = function(value, type) {
+    switch (type) {
+        case 'int':
+            return parseInt(value, 10);
+        case 'float':
+            return parseFloat(value);
+        case 'string':
+        default:
+            return value + '';
+    }
+};
+
+var types = argList(argv.type)
+    .reduce(function(m, t) {
+        d = t.split(':');
+        m[d[0]] = d[1];
+        return m;
+    }, {});
+
 parser(argv._[0], function(err, againstData) {
     if (err) throw err;
-    var against = indexBy(againstData, argv.againstField);
+    var againstFields = argList(argv.againstField);
+    var nest = againstFields.reduce(function (nest, field) {
+        return nest.key(function (d) { return d[field]; });
+    }, collection.nest());
+    var against = nest.object(againstData);
+    var geoFields = argList(argv.geojsonField);
     process.stdin.pipe(geojsonStream.parse())
         .pipe(through(function(feature) {
-            var geojsonVal = feature.properties[argv.geojsonField];
-            var match = against[geojsonVal];
+            var geojsonVals = geoFields.map(function (field) {
+                return feature.properties[field];
+            });
+            var match = geojsonVals.reduce(function (match, val) {
+                if (!match) return;
+                return match[val];
+            }, against);
+            match = match && match.length === 1 ? match[0] : null;
             if (match) {
+                if (types) {
+                    keysIn(match).forEach(function(k) {
+                        var value = match[k];
+                        var type = types[k];
+                        match[k] = setType(value, type);
+                    });
+                }
                 assign(feature.properties, match);
             } else {
-                console.error('found no match for geojsonField=%s', geojsonVal);
+                console.error('found no match for geojsonFields=%s', geojsonVals);
             }
             this.push(feature);
         }))
