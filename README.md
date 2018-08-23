@@ -8,9 +8,10 @@ Join a stream of GeoJSON against a dataset.
 
 ## usage
 
-* againstField: the field in the dataset to join against geojson
-* geojsonField: the field in the geojson feature properties
-* `format`: format of the dataset. can be json, csv, dbf. Default json.
+* againstField: field/s in the dataset to join against geojson
+* geojsonField: field/s in the geojson feature properties
+* `format`: format of the dataset. can be json, csv, dbf. default json.
+* `type`: type to cast a field with in the dataset. type can be string, int, float.
 
 Accepts GeoJSON on stdin and the joined-against file as an argument
 
@@ -23,6 +24,15 @@ $ geojson-join test/against.json \
 ```sh
 $ geojson-join --format=dbf \
     test/against.dbf \
+    --againstField=id \
+    --geojsonField=id < test/random.geojson
+```
+
+```sh
+$ geojson-join --format=csv \
+    --type=population:int \
+    --type=area:float \
+    test/against.csv \
     --againstField=id \
     --geojsonField=id < test/random.geojson
 ```
